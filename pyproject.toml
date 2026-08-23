@@ -1,2 +1,11 @@
-[tool.vercel]
-entrypoint = "app.api:app"
+[project]
+name = "intelligent-conversation-agent"
+version = "0.1.0"
+description = "Deterministic conversational message engine"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "python-dotenv"
+]
