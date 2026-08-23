@@ -9,3 +9,6 @@ dependencies = [
     "pydantic",
     "python-dotenv"
 ]
+
+[tool.vercel]
+entrypoint = "app.api:app"
