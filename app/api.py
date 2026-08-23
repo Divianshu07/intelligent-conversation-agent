@@ -4,7 +4,7 @@ import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.composer import AIComposer
 from app.config import Settings
@@ -51,6 +51,110 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         version=runtime_settings.version or "0.1.0",
         lifespan=lifespan,
     )
+
+    @application.get("/", response_class=HTMLResponse, include_in_schema=False)
+    async def root() -> str:
+        return """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Magicpin AI Challenge Bot</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    max-width: 850px;
+                    margin: 60px auto;
+                    padding: 0 24px;
+                    color: #222;
+                    line-height: 1.6;
+                }
+
+                h1 {
+                    margin-bottom: 8px;
+                }
+
+                .status {
+                    display: inline-block;
+                    padding: 5px 10px;
+                    border-radius: 6px;
+                    background: #e8f5e9;
+                    color: #1b5e20;
+                    font-weight: 600;
+                }
+
+                a {
+                    color: #1565c0;
+                    text-decoration: none;
+                }
+
+                a:hover {
+                    text-decoration: underline;
+                }
+
+                li {
+                    margin: 10px 0;
+                }
+
+                code {
+                    background: #f4f4f4;
+                    padding: 2px 5px;
+                    border-radius: 4px;
+                }
+            </style>
+        </head>
+
+        <body>
+            <h1>Magicpin AI Challenge Bot</h1>
+
+            <p>
+                <span class="status">API is live</span>
+            </p>
+
+            <p>
+                This deployment is the public API endpoint
+                for the Magicpin AI Challenge.
+            </p>
+
+            <h2>Available endpoints</h2>
+
+            <ul>
+                <li>
+                    <a href="/docs">API Documentation</a>
+                </li>
+
+                <li>
+                    <a href="/openapi.json">OpenAPI JSON</a>
+                </li>
+
+                <li>
+                    <a href="/v1/healthz">GET /v1/healthz</a>
+                </li>
+
+                <li>
+                    <a href="/v1/metadata">GET /v1/metadata</a>
+                </li>
+
+                <li>
+                    <code>POST /v1/context</code>
+                </li>
+
+                <li>
+                    <code>POST /v1/tick</code>
+                </li>
+
+                <li>
+                    <code>POST /v1/reply</code>
+                </li>
+
+                <li>
+                    <code>POST /v1/teardown</code>
+                </li>
+            </ul>
+        </body>
+        </html>
+        """
 
     @application.get("/v1/healthz", response_model=HealthResponse)
     async def healthz(request: Request) -> HealthResponse:
@@ -122,11 +226,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request: Request,
     ) -> ReplyResponse:
         service = ReplyService(request.app.state.store)
+
         return service.handle(request_body)
 
     @application.post("/v1/teardown", response_model=TeardownResponse)
     async def teardown(request: Request) -> TeardownResponse:
         request.app.state.store.clear_all()
+
         return TeardownResponse(status="ok")
 
     return application
