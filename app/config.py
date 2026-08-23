@@ -60,6 +60,14 @@ class Settings(BaseSettings):
 
         return value
 
+    @field_validator("version", mode="before")
+    @classmethod
+    def handle_empty_version(cls, value):
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return "0.1.0"
+
+        return value
+
     @property
     def parsed_team_members(self) -> list[str]:
         if not self.team_members:

@@ -33,21 +33,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         application.state.started_at = time.monotonic()
         application.state.store = ContextStore(runtime_settings.database_path)
 
-        # Use the configured Gemini provider only when an API key is actually
-        # present. Otherwise leave the composer without a provider so it
-        # falls back to the existing deterministic FallbackComposer path —
-        # the app must start and /v1/tick must work with no key configured.
-        gemini_provider = GeminiProvider(runtime_settings.gemini_api_key, runtime_settings.gemini_model)
+        gemini_provider = GeminiProvider(
+            runtime_settings.gemini_api_key,
+            runtime_settings.gemini_model,
+        )
+
         application.state.composer = AIComposer(
             provider=gemini_provider if gemini_provider.available else None
         )
 
         yield
+
         application.state.store.close()
 
     application = FastAPI(
         title="Magicpin AI Challenge Bot",
-        version=runtime_settings.version,
+        version=runtime_settings.version or "0.1.0",
         lifespan=lifespan,
     )
 
@@ -55,7 +56,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def healthz(request: Request) -> HealthResponse:
         return HealthResponse(
             status="ok",
-            uptime_seconds=int(time.monotonic() - request.app.state.started_at),
+            uptime_seconds=int(
+                time.monotonic() - request.app.state.started_at
+            ),
             contexts_loaded=request.app.state.store.counts(),
         )
 
@@ -89,6 +92,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 reason="stale_version",
                 current_version=result.current_version,
             )
+
             return JSONResponse(
                 status_code=status.HTTP_409_CONFLICT,
                 content=response.model_dump(mode="json"),
@@ -105,7 +109,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         request_body: TickRequest,
         request: Request,
     ) -> TickResponse:
-        service = TickService(request.app.state.store, composer=request.app.state.composer)
+        service = TickService(
+            request.app.state.store,
+            composer=request.app.state.composer,
+        )
+
         return service.tick(request_body)
 
     @application.post("/v1/reply", response_model=ReplyResponse)
@@ -118,9 +126,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @application.post("/v1/teardown", response_model=TeardownResponse)
     async def teardown(request: Request) -> TeardownResponse:
-        # Optional end-of-test cleanup call: wipe all stored runtime state
-        # (all context scopes plus the internal "conversation" scope) so a
-        # fresh grading/test run starts clean. Safe to call repeatedly.
         request.app.state.store.clear_all()
         return TeardownResponse(status="ok")
 
